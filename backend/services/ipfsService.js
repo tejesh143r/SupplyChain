@@ -45,7 +45,12 @@ async function uploadToIPFS(metadataPayload) {
     }
   }
 
-  // Local SHA-256 based IPFS simulator fallback
+  const fallbackEnabled = process.env.IPFS_FALLBACK_ENABLED !== 'false' && process.env.NODE_ENV !== 'production';
+  if (!fallbackEnabled) {
+    throw new Error('Pinata IPFS is unavailable and local IPFS fallback is disabled');
+  }
+
+  // Local SHA-256 based IPFS simulator fallback for development only.
   const sha256Hash = crypto.createHash('sha256').update(payloadString).digest('hex');
   const mockIpfsHash = `QmSCFlow${sha256Hash.substring(0, 38)}`;
   
@@ -70,6 +75,9 @@ async function getFromIPFS(ipfsHash) {
     return response.data;
   } catch (err) {
     console.warn(`Could not fetch hash ${ipfsHash} from public IPFS gateway:`, err.message);
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`Unable to retrieve IPFS metadata for ${ipfsHash}`);
+    }
     return {
       note: "Metadata fetched from on-chain reference hash",
       ipfsHash: ipfsHash,

@@ -86,6 +86,20 @@ contract SecureChainFlow {
         _;
     }
 
+    modifier onlyManufacturer(uint256 productId) {
+        Product memory p = _products[productId];
+        require(p.productId != 0, "SecureChainFlow: Product does not exist");
+        require(msg.sender == p.manufacturer || msg.sender == owner, "SecureChainFlow: Sender is not authorized manufacturer");
+        _;
+    }
+
+    modifier onlyCustodian(uint256 productId) {
+        Product memory p = _products[productId];
+        require(p.productId != 0, "SecureChainFlow: Product does not exist");
+        require(msg.sender == p.currentCustodian || msg.sender == owner, "SecureChainFlow: Sender is not authorized custodian");
+        _;
+    }
+
     modifier onlyCustodianOrManufacturer(uint256 productId) {
         Product memory p = _products[productId];
         require(p.productId != 0, "SecureChainFlow: Product does not exist");
@@ -96,6 +110,11 @@ contract SecureChainFlow {
         _;
     }
 
+    modifier onlyAuthorizedMonitor() {
+        require(authorizedMonitors[msg.sender], "SecureChainFlow: Unauthorized monitor");
+        _;
+    }
+
     constructor() {
         owner = msg.sender;
         authorizedMonitors[msg.sender] = true;
@@ -103,6 +122,18 @@ contract SecureChainFlow {
 
     function setAuthorizedMonitor(address monitor, bool status) external onlyOwner {
         authorizedMonitors[monitor] = status;
+    }
+
+    function _isValidTransition(State fromState, State toState) internal pure returns (bool) {
+        if (toState == State.Flagged) {
+            return fromState != State.Flagged;
+        }
+
+        if (fromState == State.Created) return toState == State.Processed;
+        if (fromState == State.Processed) return toState == State.InTransit;
+        if (fromState == State.InTransit) return toState == State.Inspected;
+        if (fromState == State.Inspected) return toState == State.Delivered;
+        return false;
     }
 
     /**
@@ -158,6 +189,7 @@ contract SecureChainFlow {
         require(newCustodian != address(0), "Invalid new custodian address");
         Product storage prod = _products[productId];
         require(!prod.isFlagged, "SecureChainFlow: Cannot transfer flagged product");
+        require(_isValidTransition(prod.currentState, newState), "SecureChainFlow: Invalid state transition");
 
         address prevCustodian = prod.currentCustodian;
         prod.currentCustodian = newCustodian;
@@ -177,10 +209,11 @@ contract SecureChainFlow {
     /**
      * @dev Direct hook for AI/ML modules and telemetry monitors to flag anomalous products
      */
-    function flagAnomalousProduct(uint256 productId, string memory reason) external {
+    function flagAnomalousProduct(uint256 productId, string memory reason) external onlyAuthorizedMonitor {
         Product storage prod = _products[productId];
         require(prod.productId != 0, "SecureChainFlow: Product does not exist");
-        
+        require(!prod.isFlagged, "SecureChainFlow: Product is already flagged");
+
         prod.currentState = State.Flagged;
         prod.isFlagged = true;
         prod.flagReason = reason;

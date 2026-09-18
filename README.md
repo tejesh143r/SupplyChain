@@ -214,7 +214,29 @@ PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 PINATA_API_KEY=your_pinata_api_key
 PINATA_SECRET_KEY=your_pinata_secret_key
 AI_SERVICE_URL=http://127.0.0.1:8000
+AI_SERVICE_API_KEY=replace_with_a_long_random_service_key
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+API_KEY=replace_with_a_long_random_client_key
+IPFS_FALLBACK_ENABLED=false
 ```
+
+Production requires `API_KEY`, `AI_SERVICE_API_KEY`, `CORS_ORIGINS`, `RPC_URL`, and `PRIVATE_KEY`. The backend sends `AI_SERVICE_API_KEY` only to the internal AI service; the browser must never receive that secret. Set `API_KEY` for protected deployments and send it as `x-api-key` or a Bearer token. Keep `IPFS_FALLBACK_ENABLED=true` only for local development; production deployments must use working Pinata credentials and set it to `false`.
+
+The AI service accepts telemetry only from the backend when `AI_SERVICE_API_KEY` is configured. Its `/health` endpoint remains available for orchestration probes.
+
+### Frontend (`frontend/.env`)
+```env
+VITE_BACKEND_URL=http://localhost:5000
+VITE_API_KEY=
+```
+
+### Backend API Tests
+```bash
+cd backend
+npm test
+```
+
+The test suite covers the public health endpoint, API-key enforcement, request validation, and configured CORS origins.
 
 ---
 

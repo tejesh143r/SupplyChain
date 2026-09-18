@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, useMotionValue, useSpring } from 'framer-motion';
 import axios from 'axios';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
@@ -7,10 +8,9 @@ import TransferCustodyModal from './components/TransferCustodyModal';
 import ProvenanceView from './components/ProvenanceView';
 import QRScannerModal from './components/QRScannerModal';
 import TelemetrySimulator from './components/TelemetrySimulator';
-import { ShieldCheck, Cpu, RefreshCw, Sparkles, Layers, Box, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Sparkles, Box } from 'lucide-react';
 
-const BACKEND_URL = 'http://localhost:5000';
-const AI_URL = 'http://localhost:8000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 export default function App() {
   const [products, setProducts] = useState([]);
@@ -18,7 +18,6 @@ export default function App() {
   const [error, setError] = useState('');
   const [activeRole, setActiveRole] = useState('Manufacturer');
 
-  // Modals state
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [selectedTransferProduct, setSelectedTransferProduct] = useState(null);
@@ -26,8 +25,22 @@ export default function App() {
   const [activeProvenanceId, setActiveProvenanceId] = useState(null);
   const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
   const [selectedQRProduct, setSelectedQRProduct] = useState(null);
-
   const [showSimulator, setShowSimulator] = useState(false);
+
+  const cursorX = useMotionValue(-100);
+  const cursorY = useMotionValue(-100);
+  const smoothX = useSpring(cursorX, { stiffness: 180, damping: 18, mass: 0.4 });
+  const smoothY = useSpring(cursorY, { stiffness: 180, damping: 18, mass: 0.4 });
+
+  useEffect(() => {
+    const handlePointerMove = (event) => {
+      cursorX.set(event.clientX);
+      cursorY.set(event.clientY);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    return () => window.removeEventListener('pointermove', handlePointerMove);
+  }, [cursorX, cursorY]);
 
   useEffect(() => {
     fetchProducts();
@@ -92,7 +105,7 @@ export default function App() {
 
   const handleRegisterProduct = async (payload) => {
     try {
-      const res = await axios.post(`${BACKEND_URL}/api/product/register`, payload);
+      const res = await axios.post(`${BACKEND_URL}/api/v1/products/register`, payload);
       if (res.data.success) {
         await fetchProducts();
       }
@@ -103,7 +116,7 @@ export default function App() {
 
   const handleTransferCustody = async (transferData) => {
     try {
-      const res = await axios.post(`${BACKEND_URL}/api/product/transfer`, transferData);
+      const res = await axios.post(`${BACKEND_URL}/api/v1/products/transfer`, transferData);
       if (res.data.success) {
         await fetchProducts();
       }
@@ -121,9 +134,14 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      
-      {/* Top Glass Navigation Bar */}
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
+      <motion.div
+        className="pointer-events-none fixed left-0 top-0 z-40 hidden md:block"
+        style={{ x: smoothX, y: smoothY, translateX: '-50%', translateY: '-50%' }}
+      >
+        <div className="h-8 w-8 rounded-full border border-cyan-400/60 bg-cyan-500/5 shadow-[0_0_24px_rgba(34,211,238,0.28)]" />
+      </motion.div>
+
       <Navbar
         activeRole={activeRole}
         setActiveRole={setActiveRole}
@@ -136,10 +154,17 @@ export default function App() {
         isSimulating={showSimulator}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-8 space-y-8">
-        
-        {/* Hero Dashboard Banner */}
-        <div className="relative glass-panel rounded-3xl p-6 lg:p-8 border border-white/10 overflow-hidden">
+      <motion.main
+        className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-8 space-y-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: 'easeOut' }}
+      >
+        <motion.div
+          className="relative glass-panel rounded-3xl p-6 lg:p-8 border border-white/10 overflow-hidden"
+          whileHover={{ scale: 1.01, borderColor: 'rgba(6, 182, 212, 0.4)' }}
+          transition={{ duration: 0.2 }}
+        >
           <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
           <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -157,7 +182,6 @@ export default function App() {
               </p>
             </div>
 
-            {/* Quick Metrics */}
             <div className="grid grid-cols-3 gap-3 w-full md:w-auto">
               <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-white/10 text-center">
                 <span className="text-xs text-slate-400 block font-medium">Total Products</span>
@@ -177,20 +201,22 @@ export default function App() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Live IoT Telemetry Simulator (Toggleable) */}
         {showSimulator && (
-          <div className="animate-fadeIn">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+          >
             <TelemetrySimulator
               products={products}
-              aiUrl={AI_URL}
+              backendUrl={BACKEND_URL}
               onTelemetryStreamed={handleTelemetryStreamed}
             />
-          </div>
+          </motion.div>
         )}
 
-        {/* Product Grid Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -235,10 +261,8 @@ export default function App() {
             </div>
           )}
         </div>
+      </motion.main>
 
-      </main>
-
-      {/* Modals */}
       <RegisterProductModal
         isOpen={isRegisterOpen}
         onClose={() => setIsRegisterOpen(false)}
@@ -269,11 +293,9 @@ export default function App() {
         }}
       />
 
-      {/* Footer */}
       <footer className="w-full glass-panel border-t border-white/10 py-6 mt-12 text-center text-xs text-slate-400">
         <p>SecureChainFlow Platform &copy; 2026 - Blockchain & AI Integrated Supply Chain Architecture</p>
       </footer>
-
     </div>
   );
 }

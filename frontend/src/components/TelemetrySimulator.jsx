@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Activity, ShieldAlert, Cpu, Send, Zap, Thermometer, RefreshCw, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 
-export default function TelemetrySimulator({ products, aiUrl, onTelemetryStreamed }) {
+export default function TelemetrySimulator({ products, backendUrl, onTelemetryStreamed }) {
   const [selectedProductId, setSelectedProductId] = useState(products[0]?.productId || '1');
   const [temperature, setTemperature] = useState(3.5); // Normal cold chain
   const [humidity, setHumidity] = useState(55);
@@ -59,7 +59,7 @@ export default function TelemetrySimulator({ products, aiUrl, onTelemetryStreame
         }
       };
 
-      const res = await axios.post(`${aiUrl}/api/ai/analyze-sensor-stream`, payload);
+      const res = await axios.post(`${backendUrl}/api/v1/ai/telemetry`, payload);
       setLastResult(res.data);
       if (onTelemetryStreamed) {
         onTelemetryStreamed(res.data);

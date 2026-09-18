@@ -1,6 +1,6 @@
 @echo off
 echo ======================================================================
-echo    SecureChainFlow: Blockchain & AI Supply Chain Platform Startup
+echo    SecureChainFlow: Blockchain ^& AI Supply Chain Platform Startup
 echo ======================================================================
 echo.
 
